@@ -7,14 +7,12 @@ sys.path.insert(0, '../../tinytroupe/') # ensures that the package is imported f
 sys.path.insert(0, '../../') # ensures that the package is imported from the parent directory, not the Python installation
 sys.path.insert(0, '..') # ensures that the package is imported from the parent directory, not the Python installation
 
-#sys.path.append('../../tinytroupe/')
-#sys.path.append('../../')
-#sys.path.append('..')
 
 from tinytroupe.examples import create_oscar_the_architect, create_oscar_the_architect_2, create_lisa_the_data_scientist, create_lisa_the_data_scientist_2
 
 from testing_utils import *
 
+@pytest.mark.core
 def test_act(setup):
 
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -26,7 +24,16 @@ def test_act(setup):
         assert len(actions) >= 1, f"{agent.name} should have at least one action to perform (even if it is just DONE)."
         assert contains_action_type(actions, "TALK"), f"{agent.name} should have at least one TALK action to perform, since we asked him to do so."
         assert terminates_with_action_type(actions, "DONE"), f"{agent.name} should always terminate with a DONE action."
+        
+        # Semantic verification: check that the agent actually talks about their life
+        for action in actions:
+            if action["action"]["type"] == "TALK":
+                talk_content = action["action"]["content"]
+                assert proposition_holds(f"The following text is someone talking about their personal life, background, or experiences: '{talk_content}'"), \
+                    f"Agent should be talking about their life but said: {talk_content}"
+                break
 
+@pytest.mark.core
 def test_listen(setup):
     # test that the agent listens to a speech stimulus and updates its current messages
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -37,6 +44,7 @@ def test_listen(setup):
         assert agent.episodic_memory.retrieve_all()[-1]['content']['stimuli'][0]['type'] == 'CONVERSATION', f"{agent.name} should have the last message as a 'CONVERSATION' stimulus."
         assert agent.episodic_memory.retrieve_all()[-1]['content']['stimuli'][0]['content'] == 'Hello, how are you?', f"{agent.name} should have the last message with the correct content."
 
+@pytest.mark.core
 def test_define(setup):
     # test that the agent defines a value to its configuration and resets its prompt
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -55,6 +63,7 @@ def test_define(setup):
         # check that the prompt contains the new value
         assert '25' in agent.current_messages[0]['content'], f"{agent.name} should have the age in the prompt."
 
+@pytest.mark.core
 def test_define_several(setup):
     # Test that defining several values to a group works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -64,6 +73,7 @@ def test_define_several(setup):
         assert "Machine learning" in agent._persona["skills"], f"{agent.name} should have Machine learning as a skill."
         assert "GPT-3" in agent._persona["skills"], f"{agent.name} should have GPT-3 as a skill."
 
+@pytest.mark.core
 def test_socialize(setup):
     # Test that socializing with another agent works as expected
     an_oscar = create_oscar_the_architect()
@@ -77,15 +87,25 @@ def test_socialize(setup):
         assert contains_action_type(actions, "TALK"), f"{agent.name} should have at least one TALK action to perform, since we started a conversation."
         assert contains_action_content(actions, agent_first_name(other)), f"{agent.name} should mention {other.name}'s first name in the TALK action, since they are friends."
 
+@pytest.mark.core
 def test_see(setup):
     # Test that seeing a visual stimulus works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
-        agent.see("A beautiful sunset over the ocean.")
+        agent.see(description="A beautiful sunset over the ocean.")
         actions = agent.act(return_actions=True)
         assert len(actions) >= 1, f"{agent.name} should have at least one action to perform."
         assert contains_action_type(actions, "THINK"), f"{agent.name} should have at least one THINK action to perform, since they saw something interesting."
         assert contains_action_content(actions, "sunset"), f"{agent.name} should mention the sunset in the THINK action, since they saw it."
+        
+        # Semantic verification: check that the agent's thoughts relate to what they saw
+        for action in actions:
+            if action["action"]["type"] == "THINK":
+                think_content = action["action"]["content"]
+                assert proposition_holds(f"The following text is someone thinking about or reacting to seeing a beautiful sunset over the ocean: '{think_content}'"), \
+                    f"Agent should be thinking about the sunset but thought: {think_content}"
+                break
 
+@pytest.mark.core
 def test_think(setup):
     # Test that thinking about something works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -94,7 +114,16 @@ def test_think(setup):
         assert len(actions) >= 1, f"{agent.name} should have at least one action to perform."
         assert contains_action_type(actions, "TALK"), f"{agent.name} should have at least one TALK action to perform, since they are eager to talk."
         assert contains_action_content(actions, "life"), f"{agent.name} should mention life in the TALK action, since they thought about it."
+        
+        # Semantic verification: check that the agent expresses enthusiasm about life
+        for action in actions:
+            if action["action"]["type"] == "TALK":
+                talk_content = action["action"]["content"]
+                assert proposition_holds(f"The following text expresses enthusiasm or positive feelings about life: '{talk_content}'"), \
+                    f"Agent should be expressing enthusiasm about life but said: {talk_content}"
+                break
 
+@pytest.mark.core
 def test_internalize_goal(setup):
     # Test that internalizing a goal works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -103,8 +132,17 @@ def test_internalize_goal(setup):
         assert len(actions) >= 1, f"{agent.name} should have at least one action to perform."
         assert contains_action_type(actions, "THINK"), f"{agent.name} should have at least one THINK action to perform, since they internalized a goal."
         assert contains_action_content(actions, "cats"), f"{agent.name} should mention cats in the THINK action, since they internalized a goal about them."
+        
+        # Semantic verification: check that the agent's thoughts relate to cats or poetry
+        for action in actions:
+            if action["action"]["type"] == "THINK":
+                think_content = action["action"]["content"]
+                assert proposition_holds(f"The following text is someone thinking about cats, poetry, or composing a poem about cats: '{think_content}'"), \
+                    f"Agent should be thinking about cats or poetry but thought: {think_content}"
+                break
 
 
+@pytest.mark.core
 def test_move_to(setup):
     # Test that moving to a new location works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -114,6 +152,7 @@ def test_move_to(setup):
         assert "busy" in agent._mental_state["context"], f"{agent.name} should have busy as part of the current context."
         assert "diverse" in agent._mental_state["context"], f"{agent.name} should have diverse as part of the current context."
 
+@pytest.mark.core
 def test_change_context(setup):
     # Test that changing the context works as expected
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
@@ -122,6 +161,7 @@ def test_change_context(setup):
         assert "relaxed" in agent._mental_state["context"], f"{agent.name} should have relaxed as part of the current context."
         assert "comfortable" in agent._mental_state["context"], f"{agent.name} should have comfortable as part of the current context."
 
+@pytest.mark.core
 def test_save_specification(setup):   
     for agent in [create_oscar_the_architect(), create_lisa_the_data_scientist()]:
         # save to a file

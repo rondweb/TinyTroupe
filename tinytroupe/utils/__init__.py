@@ -15,3 +15,6 @@ from tinytroupe.utils.misc import *
 from tinytroupe.utils.rendering import *
 from tinytroupe.utils.validation import *
 from tinytroupe.utils.semantics import *
+from tinytroupe.utils.behavior import *
+from tinytroupe.utils.parallel import *
+from tinytroupe.utils.concurrency import *

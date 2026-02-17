@@ -61,6 +61,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+test-report.*
+test-results.*
 
 # Translations
 *.mo
@@ -169,3 +171,8 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Test credentials for secure API testing (should never be committed)
+test_credentials.ini
+tests/test_credentials.ini
+test-report-*.html

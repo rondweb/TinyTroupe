@@ -3,14 +3,16 @@ import logging
 logger = logging.getLogger("tinytroupe")
 
 import sys
-sys.path.append('../../tinytroupe/')
-sys.path.append('../../')
-sys.path.append('..')
+# Insert paths at the beginning of sys.path (position 0)
+sys.path.insert(0, '..')
+sys.path.insert(0, '../../')
+sys.path.insert(0, '../../tinytroupe/')
 
 from tinytroupe.examples import create_lisa_the_data_scientist, create_oscar_the_architect, create_marcos_the_physician
 from tinytroupe.environment import TinyWorld
 from testing_utils import *
 
+@pytest.mark.core
 def test_run(setup, focus_group_world):
 
     # empty world
@@ -28,9 +30,16 @@ def test_run(setup, focus_group_world):
             if 'action' in msg['content'] and 'target' in msg['content']['action']:
                 assert msg['content']['action']['target'] != agent.name, f"{agent.name} should not have any messages with itself as the target."
             
+            # Semantic verification: if it's a TALK action, ensure it relates to AI product discussion
+            if 'action' in msg['content'] and msg['content']['action'].get('type') == 'TALK':
+                action_content = msg['content']['action'].get('content', '')
+                if action_content:  # Only check if there's content
+                    assert proposition_holds(action_content + " - The message relates to AI products, technology, or innovation")
+            
             # TODO stimulus integrity check?
         
 
+@pytest.mark.core
 def test_broadcast(setup, focus_group_world):
 
     world = focus_group_world
@@ -43,8 +52,21 @@ def test_broadcast(setup, focus_group_world):
     for agent in focus_group_world.agents:
         # did the agents receive the message?
         assert "Folks, we need to brainstorm" in agent.episodic_memory.retrieve_first(1)[0]['content']['stimuli'][0]['content'], f"{agent.name} should have received the message."
+    
+    # Run the world to let agents respond
+    world.run(1)
+    
+    # Semantic verification: check that agent responses relate to baby products or brainstorming
+    for agent in focus_group_world.agents:
+        recent_actions = agent.episodic_memory.retrieve_first(3)  # Get recent actions
+        for msg in recent_actions:
+            if 'action' in msg['content'] and msg['content']['action'].get('type') == 'TALK':
+                action_content = msg['content']['action'].get('content', '')
+                if action_content and len(action_content) > 20:  # Only check substantial responses
+                    assert proposition_holds(action_content + " - The message relates to baby products, parenting, or product brainstorming")
 
 
+@pytest.mark.core
 def test_encode_complete_state(setup, focus_group_world):
     world = focus_group_world
 
@@ -55,6 +77,7 @@ def test_encode_complete_state(setup, focus_group_world):
     assert state['name'] == world.name, "The state should have the world name."
     assert state['agents'] is not None, "The state should have the agents."
 
+@pytest.mark.core
 def test_decode_complete_state(setup, focus_group_world):
     world = focus_group_world
 
