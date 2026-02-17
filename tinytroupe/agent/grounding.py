@@ -2,13 +2,10 @@ from tinytroupe.utils import JsonSerializableRegistry
 import tinytroupe.utils as utils
 
 from tinytroupe.agent import logger
-from llama_index.core import  VectorStoreIndex, SimpleDirectoryReader, Document, StorageContext, load_index_from_storage
-from llama_index.core.vector_stores import SimpleVectorStore
+from llama_index.core import  VectorStoreIndex, SimpleDirectoryReader, Document
 from llama_index.readers.web import SimpleWebPageReader
-import json
 import tempfile
 import os
-import shutil
 
 
 #######################################################################################################################
@@ -217,13 +214,15 @@ class BaseSemanticGroundingConnector(GroundingConnector):
         """
         # index documents by name
         if len(new_documents) > 0:
-            
-            # process documents individually too
+            # process documents individually
             for document in new_documents:
                 logger.debug(f"Adding document {document} to index, text is: {document.text}")
 
                 # out of an abundance of caution, we sanitize the text
-                document.text = utils.sanitize_raw_string(document.text)
+                sanitized_text = utils.sanitize_raw_string(document.text)
+                # clone the document with the new text and add it to the list
+                sanitized_document = self.clone_document_with_new_text(document, sanitized_text)
+                self.documents.append(sanitized_document)
 
                 logger.debug(f"Document text after sanitization: {document.text}")
 
@@ -257,7 +256,25 @@ class BaseSemanticGroundingConnector(GroundingConnector):
                     store_nodes_override=True  # This ensures nodes (with text) are stored
                 )
             else:
-                self.index.refresh_ref_docs(self.documents)
+                self.index.refresh(self.documents)
+
+
+    def clone_document_with_new_text(self, original_doc: Document, new_text: str) -> Document:
+        """
+        Clones the specified document, replacing the text with the new text.
+        Here, "document" refer to the llama-index's data structure that stores a unit of content.
+        """
+        new_doc = Document(
+            text=new_text,  
+            metadata=original_doc.metadata,  # Copy metadata
+            excluded_llm_metadata_keys=original_doc.excluded_llm_metadata_keys,
+            excluded_embed_metadata_keys=original_doc.excluded_embed_metadata_keys,
+            metadata_separator=original_doc.metadata_separator,
+            metadata_template=original_doc.metadata_template,
+            text_template=original_doc.text_template,
+            relationships=original_doc.relationships
+        )
+        return new_doc    
     
     @staticmethod
     def _set_internal_id_to_documents(documents:list, external_attribute_name:str ="file_name") -> None:
