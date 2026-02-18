@@ -88,8 +88,16 @@ class OpenAIClient:
         self.cache_api_calls = cache_api_calls
         self.cache_file_name = cache_file_name
         if self.cache_api_calls:
+            abs_path = os.path.abspath(self.cache_file_name)
+            exists = os.path.exists(abs_path)
+            logger.info(
+                f"API cache file location: {abs_path} (exists: {exists})"
+            )
             # load the cache, if any
             self.api_cache = self._load_cache()
+            logger.info(
+                f"API cache loaded with {len(self.api_cache)} entries."
+            )
 
     def _reset_cost_stats(self):
         """
@@ -470,6 +478,7 @@ class OpenAIClient:
             cached_dict = cache_store.get(cache_key)
             if cached_dict is None:
                 return None
+            logger.info("API cache hit — returning cached LLM response.")
             # Reconstruct the ChatCompletion object from the cached dict
             return self._from_cached_format(cached_dict)
 
