@@ -134,7 +134,7 @@ class ConfigManager:
             "CACHE_API_CALLS", False
         )
         self._config["cache_file_name"] = config["OpenAI"].get(
-            "CACHE_FILE_NAME", "openai_api_cache.pickle"
+            "CACHE_FILE_NAME", "openai_api_cache.json"
         )
 
         self._config["max_content_display_length"] = config["OpenAI"].getint(

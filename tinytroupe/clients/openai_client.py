@@ -1,7 +1,7 @@
 import configparser
+import json
 import logging
 import os
-import pickle
 import threading
 import time
 from contextlib import contextmanager
@@ -21,11 +21,57 @@ logger = logging.getLogger("tinytroupe")
 config = utils.read_config_file()
 
 ###########################################################################
+# Base caching class
+###########################################################################
+
+
+class LLMCacheBase:
+    """
+    Base class providing a JSON-based caching mechanism for LLM API calls.
+    Subclasses inherit cache save/load functionality and the set_api_cache method.
+    """
+
+    def _save_cache(self):
+        """
+        Saves the API cache to disk as a JSON file.
+        """
+        with open(self.cache_file_name, "w", encoding="utf-8") as f:
+            json.dump(self.api_cache, f, ensure_ascii=False)
+
+    def _load_cache(self):
+        """
+        Loads the API cache from disk.
+        """
+        if os.path.exists(self.cache_file_name):
+            try:
+                with open(self.cache_file_name, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Cache file exists but could not be loaded: {e}. Starting with empty cache.")
+                return {}
+        return {}
+
+    @config_manager.config_defaults(cache_file_name="cache_file_name")
+    def set_api_cache(self, cache_api_calls, cache_file_name=None):
+        """
+        Enables or disables the caching of API calls.
+
+        Args:
+        cache_file_name (str): The name of the file to use for caching API calls.
+        """
+        self.cache_api_calls = cache_api_calls
+        self.cache_file_name = cache_file_name
+        if self.cache_api_calls:
+            # load the cache, if any
+            self.api_cache = self._load_cache()
+
+
+###########################################################################
 # Client class
 ###########################################################################
 
 
-class OpenAIClient:
+class OpenAIClient(LLMCacheBase):
     """
     A utility class for interacting with the OpenAI API.
     """
@@ -76,20 +122,6 @@ class OpenAIClient:
             return None
 
         return candidate
-
-    @config_manager.config_defaults(cache_file_name="cache_file_name")
-    def set_api_cache(self, cache_api_calls, cache_file_name=None):
-        """
-        Enables or disables the caching of API calls.
-
-        Args:
-        cache_file_name (str): The name of the file to use for caching API calls.
-        """
-        self.cache_api_calls = cache_api_calls
-        self.cache_file_name = cache_file_name
-        if self.cache_api_calls:
-            # load the cache, if any
-            self.api_cache = self._load_cache()
 
     def _reset_cost_stats(self):
         """
@@ -422,9 +454,9 @@ class OpenAIClient:
 
     def _to_cacheable_format(self, response):
         """
-        Converts an API response to a dictionary format that can be pickled.
+        Converts an API response to a dictionary format suitable for JSON caching.
         This is necessary because some response types (like ParsedChatCompletion
-        with generic types) cannot be pickled directly.
+        with generic types) are not directly JSON serializable.
         """
         try:
             # Try model_dump() first (Pydantic v2)
@@ -448,7 +480,7 @@ class OpenAIClient:
         """
         Reconstructs a ChatCompletion object from a cached dictionary.
         We use the base ChatCompletion class (not ParsedChatCompletion) to avoid
-        issues with generic type parameters that can't be pickled.
+        issues with generic type parameters that are not directly JSON serializable.
         """
         from openai.types.chat import ChatCompletion
         try:
@@ -556,28 +588,6 @@ class OpenAIClient:
         except Exception as e:
             logger.error(f"Error counting tokens: {e}")
             return None
-
-    def _save_cache(self):
-        """
-        Saves the API cache to disk. We use pickle to do that because some obj
-        are not JSON serializable.
-        """
-        # use pickle to save the cache
-        with open(self.cache_file_name, "wb") as f:
-            pickle.dump(self.api_cache, f)
-
-    def _load_cache(self):
-        """
-        Loads the API cache from disk.
-        """
-        if os.path.exists(self.cache_file_name):
-            try:
-                with open(self.cache_file_name, "rb") as f:
-                    return pickle.load(f)
-            except (EOFError, pickle.UnpicklingError) as e:
-                logger.warning(f"Cache file exists but could not be loaded: {e}. Starting with empty cache.")
-                return {}
-        return {}
 
     @config_manager.config_defaults(model="embedding_model")
     def get_embedding(self, text, model=None):
