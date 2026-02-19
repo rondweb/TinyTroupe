@@ -45,7 +45,7 @@ jobs:
         run: pip install -e .
 
       - name: Restore API cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: openai_api_cache.pickle
           key: openai-api-cache-${{ github.run_id }}
@@ -56,6 +56,13 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: pytest -s --use_cache
+
+      - name: Save API cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: openai_api_cache.pickle
+          key: openai-api-cache-${{ github.run_id }}
 
       - name: Upload test results
         if: always()

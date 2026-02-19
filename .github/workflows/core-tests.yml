@@ -36,11 +36,9 @@ jobs:
         run: pip install -e .
 
       - name: Restore API cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: openai_api_cache.pickle
-          # A unique key per run ensures the updated cache is always saved.
-          # restore-keys falls back to the most recent previous cache.
           key: openai-api-cache-${{ github.run_id }}
           restore-keys: |
             openai-api-cache-
@@ -49,6 +47,13 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: pytest -s --use_cache -m "core and not slow"
+
+      - name: Save API cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: openai_api_cache.pickle
+          key: openai-api-cache-${{ github.run_id }}
 
       - name: Upload test results
         if: always()
