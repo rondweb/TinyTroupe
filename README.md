@@ -1,6 +1,10 @@
 # TinyTroupe 🤠🤓🥸🧐
 [![Core Tests](https://github.com/microsoft/TinyTroupe/actions/workflows/core-tests.yml/badge.svg)](https://github.com/microsoft/TinyTroupe/actions/workflows/core-tests.yml)
 
+<p align="center">
+  <a href="https://trendshift.io/repositories/12206" target="_blank"><img src="https://trendshift.io/api/badge/repositories/12206" alt="Yeah, we are totally fine for not getting to #1, no hard feelings at all." style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
+
 *LLM-powered multiagent persona simulation for imagination enhancement and business insights.*
 
 <p align="center">
@@ -48,7 +52,18 @@ We are releasing *TinyTroupe* at a relatively early stage, with considerable wor
 
 
 ## LATEST NEWS
-**[2026-02-01] Release 0.6.0 with new features and model updates:**
+
+<details open>
+<summary><b>[2026-03-28] Release 0.7.0: support for vision modality.</b></summary>
+
+  - Take a look one example [Vision for Product, Diagnosis and Appreciation Feedback (image modality)](./examples/Vision%20for%20Product%2C%20Diagnosis%20and%20Appreciation%20Feedback%20%28image%20modality%29.ipynb) notebook.
+  - LLM API caching now uses JSON instead of pickle.
+
+</details>
+
+<details>
+<summary><b>[2026-02-01] Release 0.6.0 with new features and model updates</b></summary>
+
   - Default model is now `gpt-5-mini`. **Important:** The GPT-5 model series uses different parameters than the former GPT-4* series, so you may need to adjust your `config.ini` settings accordingly. Legacy models (`gpt-4.1-mini`, `gpt-4o-mini`) are still supported.
   - Introduces `SimulationExperimentEmpiricalValidator` to compare simulation results against real-world empirical data using statistical tests (t-test, KS-test). This is essential for validating that simulations match actual human behavior.
   - Introduces `AgentChatJupyterWidget` for interactive conversations with agents directly in Jupyter notebooks.
@@ -58,10 +73,20 @@ We are releasing *TinyTroupe* at a relatively early stage, with considerable wor
   
   **Note: GPT-5 model parameters differ from GPT-4*, so please retest your important scenarios and adjust configurations accordingly.**
 
-**[2025-07-31] Release 0.5.2:**  Mostly just changes the default model, which is now set to GPT-4.1-mini. It seems to bring considerable quality improvements. 
-   **Note that GPT-4.1-mini can have significant differences in behavior w.r.t. to the previous default of GPT-4o-mini, so please make sure you retest your important scenarios using GPT-4.1-mini and adjust accordingly.**
+</details>
 
-**[2025-07-15] Release 0.5.1 with various improvements. Some highlights:**
+<details>
+<summary><b>[2025-07-31] Release 0.5.2</b></summary>
+
+Mostly just changes the default model, which is now set to GPT-4.1-mini. It seems to bring considerable quality improvements. 
+
+**Note that GPT-4.1-mini can have significant differences in behavior w.r.t. to the previous default of GPT-4o-mini, so please make sure you retest your important scenarios using GPT-4.1-mini and adjust accordingly.**
+
+</details>
+
+<details>
+<summary><b>[2025-07-15] Release 0.5.1 with various improvements</b></summary>
+
   - Released the first version of the [TinyTroupe paper (as a preprint)](https://arxiv.org/abs/2507.09788), which describes the library and its use cases in more detail. You can find the related experiments and complementary material in the [publications/](./publications/) folder.
   - `TinyPerson`s now include action correction mechanisms, allowing better adherence to persona specification, self-consistency and/or fluency (for details, refer to the paper we are releasing at the same time now).
   - Substantial improvements to the `TinyPersonFactory` class, which now: uses a plan-based approach to generate new agents, allowing better sampling of larger populations; generate agents in parallel.
@@ -75,7 +100,11 @@ We are releasing *TinyTroupe* at a relatively early stage, with considerable wor
   
   **Note: this will likely break some existing programs, as the API has changed in some places.**
 
-**[2025-01-29] Release 0.4.0 with various improvements. Some highlights:**
+</details>
+
+<details>
+<summary><b>[2025-01-29] Release 0.4.0 with various improvements</b></summary>
+
   - Personas have deeper specifications now, including  personality traits, preferences, beliefs, and more. It is likely we'll further expand this in the future. 
   - `TinyPerson`s can now be defined as JSON files as well, and loaded via the `TinyPerson.load_specification()`, for greater convenience. After loading the JSON file, you can still modify the agent programmatically. See the [examples/agents/](./examples/agents/) folder for examples.
   - Introduces the concept of *fragments* to allow the reuse of persona elements across different agents. See the [examples/fragments/](./examples/fragments/) folder for examples, and the notebook [Political Compass (customizing agents with fragments)](<./examples/Political Compass (customizing agents with fragments).ipynb>) for a demonstration.
@@ -84,6 +113,8 @@ We are releasing *TinyTroupe* at a relatively early stage, with considerable wor
   - Submodules have their own folders now, to allow better organization and growth.
   
   **Note: this will likely break some existing programs, as the API has changed in some places.**
+
+</details>
 
 ## Examples
 
