@@ -47,7 +47,7 @@ jobs:
       - name: Restore API cache
         uses: actions/cache/restore@v4
         with:
-          path: openai_api_cache.pickle
+          path: openai_api_cache.json
           key: openai-api-cache-${{ github.run_id }}
           restore-keys: |
             openai-api-cache-
@@ -61,7 +61,7 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: openai_api_cache.pickle
+          path: openai_api_cache.json
           key: openai-api-cache-${{ github.run_id }}
 
       - name: Upload test results
