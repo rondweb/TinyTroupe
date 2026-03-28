@@ -62,8 +62,16 @@ class LLMCacheBase:
         self.cache_api_calls = cache_api_calls
         self.cache_file_name = cache_file_name
         if self.cache_api_calls:
+            abs_path = os.path.abspath(self.cache_file_name)
+            exists = os.path.exists(abs_path)
+            logger.info(
+                f"API cache file location: {abs_path} (exists: {exists})"
+            )
             # load the cache, if any
             self.api_cache = self._load_cache()
+            logger.info(
+                f"API cache loaded with {len(self.api_cache)} entries."
+            )
 
 
 ###########################################################################
@@ -101,6 +109,10 @@ class OpenAIClient(LLMCacheBase):
         # Initialize cost tracking variables
         self._cost_stats_lock = threading.RLock()
         self._reset_cost_stats()
+
+        # Per-thread tracking of the last cache key used, so it can be
+        # selectively invalidated on retry without cross-thread interference.
+        self._thread_local = threading.local()
 
         self.set_api_cache(cache_api_calls, cache_file_name)
 
@@ -244,9 +256,10 @@ class OpenAIClient(LLMCacheBase):
         self._setup_from_config()
 
         # dedent the messages (field 'content' only) if needed (using textwrap)
+        # Skip messages whose content is a list (multimodal content arrays).
         if dedent_messages:
             for message in current_messages:
-                if "content" in message:
+                if "content" in message and isinstance(message["content"], str):
                     message["content"] = utils.dedent(message["content"])
 
         # We need to adapt the parameters to the API type, so we create a dictionary with them first
@@ -291,6 +304,7 @@ class OpenAIClient(LLMCacheBase):
                 # call the model, either from the cache or from the API
                 ###############################################################
                 cache_key = str((model, chat_api_params))  # need string to be hashable
+                self._thread_local.last_cache_key = cache_key  # per-thread tracking
 
                 pre_cached_response = self._get_cached_response(cache_key)
 
@@ -489,6 +503,33 @@ class OpenAIClient(LLMCacheBase):
             logger.warning(f"Could not reconstruct response from cache: {e}")
             return None
 
+    def invalidate_last_cache_entry(self):
+        """
+        Removes the most recent cache entry (from the last ``send_message`` call
+        **on the current thread**).
+
+        Uses thread-local storage so that concurrent threads never
+        accidentally invalidate each other's cache entries.
+
+        This is intended to be called on retry paths (e.g., ``repeat_on_error``)
+        so that a bad cached response does not block all subsequent attempts.
+        """
+        key = getattr(self._thread_local, "last_cache_key", None)
+        if key is None:
+            return
+
+        cache_store = getattr(self, "api_cache", None)
+        if cache_store is None:
+            return
+
+        with self._cache_lock:
+            if key in cache_store:
+                del cache_store[key]
+                self._save_cache()
+                logger.info("Invalidated last API cache entry (retry path).")
+
+        self._thread_local.last_cache_key = None
+
     def _get_cached_response(self, cache_key):
         if not self.cache_api_calls:
             return None
@@ -501,6 +542,7 @@ class OpenAIClient(LLMCacheBase):
             cached_dict = cache_store.get(cache_key)
             if cached_dict is None:
                 return None
+            logger.info("API cache hit — returning cached LLM response.")
             # Reconstruct the ChatCompletion object from the cached dict
             return self._from_cached_format(cached_dict)
 
@@ -579,7 +621,16 @@ class OpenAIClient(LLMCacheBase):
             for message in messages:
                 num_tokens += tokens_per_message
                 for key, value in message.items():
-                    num_tokens += len(encoding.encode(value))
+                    if isinstance(value, list):
+                        # Multimodal content array: count only text parts
+                        for part in value:
+                            if isinstance(part, dict) and part.get("type") == "text":
+                                num_tokens += len(encoding.encode(part.get("text", "")))
+                            # Image parts contribute tokens too, but their exact count
+                            # depends on resolution and detail; we skip them here to avoid
+                            # over-counting.  OpenAI server-side billing is authoritative.
+                    elif isinstance(value, str):
+                        num_tokens += len(encoding.encode(value))
                     if key == "name":
                         num_tokens += tokens_per_name
             num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>

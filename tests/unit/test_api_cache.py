@@ -301,6 +301,41 @@ class TestOpenAIClientCache:
         """Test that OpenAIClient inherits from LLMCacheBase."""
         assert issubclass(OpenAIClient, LLMCacheBase)
 
+    @pytest.mark.core
+    def test_invalidate_last_cache_entry(self, temp_cache_file):
+        """Test that invalidate_last_cache_entry removes the last cached key and persists to JSON."""
+        client = OpenAIClient(cache_api_calls=True, cache_file_name=temp_cache_file)
+
+        # Simulate a cache entry being tracked per-thread
+        client.api_cache["cache_key_1"] = {"id": "resp1", "choices": [], "created": 0, "model": "m", "object": "chat.completion"}
+        client.api_cache["cache_key_2"] = {"id": "resp2", "choices": [], "created": 0, "model": "m", "object": "chat.completion"}
+        client._save_cache()
+        client._thread_local.last_cache_key = "cache_key_1"
+
+        # Invalidate the last entry
+        client.invalidate_last_cache_entry()
+
+        # The entry should be gone from the in-memory cache
+        assert "cache_key_1" not in client.api_cache
+        assert "cache_key_2" in client.api_cache
+
+        # Verify it was persisted to JSON on disk
+        with open(temp_cache_file, "r", encoding="utf-8") as f:
+            on_disk = json.load(f)
+        assert "cache_key_1" not in on_disk
+        assert "cache_key_2" in on_disk
+
+    @pytest.mark.core
+    def test_invalidate_last_cache_entry_noop_when_no_key(self, temp_cache_file):
+        """Test that invalidate_last_cache_entry is a no-op when no key is tracked."""
+        client = OpenAIClient(cache_api_calls=True, cache_file_name=temp_cache_file)
+        client.api_cache["key"] = {"data": "value"}
+        client._save_cache()
+
+        # No last_cache_key set — should not raise, cache should be unchanged
+        client.invalidate_last_cache_entry()
+        assert "key" in client.api_cache
+
 
 class TestOllamaClientCache:
     """Tests for OllamaClient cache functionality via LLMCacheBase inheritance."""
