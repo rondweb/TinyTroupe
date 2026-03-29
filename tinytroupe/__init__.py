@@ -79,7 +79,13 @@ class ConfigManager:
         """Initialize default values from config file"""
         config = utils.read_config_file()
 
-        self._config["api_type"] = config["OpenAI"].get("API_TYPE", "openai")
+        llm_provider = None
+        if config.has_section("LLM"):
+            llm_provider = config["LLM"].get("PROVIDER", None)
+
+        self._config["api_type"] = llm_provider or config["OpenAI"].get(
+            "API_TYPE", "openai"
+        )
         self._config["azure_api_version"] = config["OpenAI"].get(
             "AZURE_API_VERSION", "2024-10-21"
         )
